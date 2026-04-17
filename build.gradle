@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.github.ahnyeongjun'
-version = '0.1.0'
+version = '0.2.1'
 
 java {
     toolchain {
@@ -19,7 +19,7 @@ repositories {
 
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.boot:spring-boot-dependencies:3.4.4"
+        mavenBom "org.springframework.boot:spring-boot-dependencies:4.0.3"
     }
 }
 

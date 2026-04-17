@@ -66,7 +66,7 @@ public class GoogleOAuthClient implements OAuthClient {
                     new HttpEntity<>(headers), Map.class);
 
             Map<String, Object> body = response.getBody();
-            String providerId = (String) body.get("id");
+            String providerId = (String) body.get("sub");
             String email = (String) body.get("email");
             String nickname = (String) body.get("name");
             String profileImage = (String) body.get("picture");
