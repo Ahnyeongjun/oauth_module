@@ -15,6 +15,8 @@ import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.springframework.http.HttpStatus;
+
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
@@ -99,6 +101,86 @@ class KakaoOAuthClientTest {
         assertThat(userInfo.getProfileImage()).isEqualTo("https://example.com/profile.jpg");
         assertThat(userInfo.getProvider()).isEqualTo(OAuthProvider.KAKAO);
         mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("getAccessToken 4xx (invalid_grant) 시 OAuthAuthenticationException")
+    void getAccessToken_clientError_4xx() {
+        mockServer.expect(requestTo("https://kauth.kakao.com/oauth/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .body("{\"error\":\"invalid_grant\"}")
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> kakaoOAuthClient.getAccessToken("expired-code", "http://localhost/callback"))
+                .isInstanceOf(OAuthAuthenticationException.class)
+                .hasMessageContaining("Kakao");
+    }
+
+    @Test
+    @DisplayName("getAccessToken 응답 body가 비었을 때 OAuthAuthenticationException")
+    void getAccessToken_emptyBody() {
+        mockServer.expect(requestTo("https://kauth.kakao.com/oauth/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess());
+
+        assertThatThrownBy(() -> kakaoOAuthClient.getAccessToken("code", "http://localhost/callback"))
+                .isInstanceOf(OAuthAuthenticationException.class);
+    }
+
+    @Test
+    @DisplayName("getAccessToken 응답에 access_token 키가 없으면 OAuthAuthenticationException")
+    void getAccessToken_missingTokenField() {
+        mockServer.expect(requestTo("https://kauth.kakao.com/oauth/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        "{\"token_type\":\"bearer\"}",
+                        MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> kakaoOAuthClient.getAccessToken("code", "http://localhost/callback"))
+                .isInstanceOf(OAuthAuthenticationException.class);
+    }
+
+    @Test
+    @DisplayName("getUserInfo 4xx (만료 토큰) 시 OAuthAuthenticationException")
+    void getUserInfo_clientError_4xx() {
+        mockServer.expect(requestTo("https://kapi.kakao.com/v2/user/me"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        assertThatThrownBy(() -> kakaoOAuthClient.getUserInfo("expired-token"))
+                .isInstanceOf(OAuthAuthenticationException.class)
+                .hasMessageContaining("Kakao");
+    }
+
+    @Test
+    @DisplayName("getUserInfo 응답 body가 비었을 때 OAuthAuthenticationException")
+    void getUserInfo_emptyBody() {
+        mockServer.expect(requestTo("https://kapi.kakao.com/v2/user/me"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess());
+
+        assertThatThrownBy(() -> kakaoOAuthClient.getUserInfo("test-token"))
+                .isInstanceOf(OAuthAuthenticationException.class);
+    }
+
+    @Test
+    @DisplayName("kakao_account 자체가 없는 응답 (이메일·프로필 모두 비동의)")
+    void getUserInfo_missingKakaoAccount() {
+        mockServer.expect(requestTo("https://kapi.kakao.com/v2/user/me"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {
+                          "id": 77777
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        OAuthUserInfo userInfo = kakaoOAuthClient.getUserInfo("test-token");
+
+        assertThat(userInfo.getProviderId()).isEqualTo("77777");
+        assertThat(userInfo.getEmail()).isEqualTo("kakao_77777@kakao.com");
+        assertThat(userInfo.getNickname()).isEqualTo("카카오유저");
+        assertThat(userInfo.getProfileImage()).isNull();
     }
 
     @Test

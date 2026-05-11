@@ -47,7 +47,17 @@ public class GoogleOAuthClient implements OAuthClient {
                     properties.getTokenUrl(), HttpMethod.POST,
                     new HttpEntity<>(params, headers), Map.class);
 
-            return (String) response.getBody().get("access_token");
+            Map<String, Object> body = response.getBody();
+            if (body == null) {
+                throw new OAuthAuthenticationException("Google",
+                        new IllegalStateException("Empty token response body"));
+            }
+            String token = (String) body.get("access_token");
+            if (token == null) {
+                throw new OAuthAuthenticationException("Google",
+                        new IllegalStateException("Missing access_token in response"));
+            }
+            return token;
         } catch (RestClientException e) {
             log.error("Failed to get Google access token", e);
             throw new OAuthAuthenticationException("Google", e);
@@ -66,6 +76,10 @@ public class GoogleOAuthClient implements OAuthClient {
                     new HttpEntity<>(headers), Map.class);
 
             Map<String, Object> body = response.getBody();
+            if (body == null) {
+                throw new OAuthAuthenticationException("Google",
+                        new IllegalStateException("Empty user-info response body"));
+            }
             String providerId = (String) body.get("sub");
             String email = (String) body.get("email");
             String nickname = (String) body.get("name");

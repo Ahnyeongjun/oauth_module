@@ -47,7 +47,17 @@ public class KakaoOAuthClient implements OAuthClient {
                     properties.getTokenUrl(), HttpMethod.POST,
                     new HttpEntity<>(params, headers), Map.class);
 
-            return (String) response.getBody().get("access_token");
+            Map<String, Object> body = response.getBody();
+            if (body == null) {
+                throw new OAuthAuthenticationException("Kakao",
+                        new IllegalStateException("Empty token response body"));
+            }
+            String token = (String) body.get("access_token");
+            if (token == null) {
+                throw new OAuthAuthenticationException("Kakao",
+                        new IllegalStateException("Missing access_token in response"));
+            }
+            return token;
         } catch (RestClientException e) {
             log.error("Failed to get Kakao access token", e);
             throw new OAuthAuthenticationException("Kakao", e);
@@ -66,6 +76,10 @@ public class KakaoOAuthClient implements OAuthClient {
                     new HttpEntity<>(headers), Map.class);
 
             Map<String, Object> body = response.getBody();
+            if (body == null) {
+                throw new OAuthAuthenticationException("Kakao",
+                        new IllegalStateException("Empty user-info response body"));
+            }
             String providerId = String.valueOf(body.get("id"));
 
             Map<String, Object> kakaoAccount = (Map<String, Object>) body.get("kakao_account");
