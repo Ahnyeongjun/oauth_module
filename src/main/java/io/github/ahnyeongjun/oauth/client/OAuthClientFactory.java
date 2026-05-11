@@ -14,7 +14,14 @@ public class OAuthClientFactory {
 
     public OAuthClientFactory(List<OAuthClient> oAuthClients) {
         this.clients = oAuthClients.stream()
-                .collect(Collectors.toMap(OAuthClient::getProvider, Function.identity()));
+                .collect(Collectors.toMap(
+                        OAuthClient::getProvider,
+                        Function.identity(),
+                        (existing, duplicate) -> {
+                            throw new IllegalArgumentException(
+                                    "중복된 OAuth 제공자가 등록되었습니다: " + existing.getProvider().name());
+                        }
+                ));
     }
 
     public OAuthClient getClient(OAuthProvider provider) {

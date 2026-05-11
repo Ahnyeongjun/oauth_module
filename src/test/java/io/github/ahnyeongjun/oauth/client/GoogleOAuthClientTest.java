@@ -176,4 +176,34 @@ class GoogleOAuthClientTest {
 
         assertThat(userInfo.getNickname()).isEqualTo("구글유저");
     }
+
+    @Test
+    @DisplayName("sub 필드가 없으면 OAuthAuthenticationException을 던진다")
+    void getUserInfo_noSub_throwsException() {
+        mockServer.expect(requestTo("https://openidconnect.googleapis.com/v1/userinfo"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {"email": "user@gmail.com", "name": "테스트유저"}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> googleOAuthClient.getUserInfo("test-token"))
+                .isInstanceOf(OAuthAuthenticationException.class)
+                .hasMessageContaining("Google");
+    }
+
+    @Test
+    @DisplayName("email 필드가 없어도 나머지 정보로 OAuthUserInfo를 반환한다")
+    void getUserInfo_noEmail_returnsNullEmail() {
+        mockServer.expect(requestTo("https://openidconnect.googleapis.com/v1/userinfo"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {"sub": "google-user-id", "name": "테스트유저"}
+                        """, MediaType.APPLICATION_JSON));
+
+        OAuthUserInfo userInfo = googleOAuthClient.getUserInfo("test-token");
+
+        assertThat(userInfo.getProviderId()).isEqualTo("google-user-id");
+        assertThat(userInfo.getEmail()).isNull();
+        assertThat(userInfo.getNickname()).isEqualTo("테스트유저");
+    }
 }

@@ -57,6 +57,31 @@ class OAuthClientFactoryTest {
                 .isInstanceOf(UnsupportedProviderException.class);
     }
 
+    @Test
+    @DisplayName("빈 문자열 요청 시 UnsupportedProviderException을 던진다")
+    void getClient_emptyString() {
+        assertThatThrownBy(() -> factory.getClient(""))
+                .isInstanceOf(UnsupportedProviderException.class);
+    }
+
+    @Test
+    @DisplayName("공백 문자열 요청 시 UnsupportedProviderException을 던진다")
+    void getClient_whitespace() {
+        assertThatThrownBy(() -> factory.getClient("   "))
+                .isInstanceOf(UnsupportedProviderException.class);
+    }
+
+    @Test
+    @DisplayName("동일 provider를 중복 등록하면 IllegalArgumentException을 던진다")
+    void duplicateProvider_throwsException() {
+        StubOAuthClient kakao1 = new StubOAuthClient(OAuthProvider.KAKAO);
+        StubOAuthClient kakao2 = new StubOAuthClient(OAuthProvider.KAKAO);
+
+        assertThatThrownBy(() -> new OAuthClientFactory(List.of(kakao1, kakao2)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("KAKAO");
+    }
+
     // 테스트용 stub 구현체
     private record StubOAuthClient(OAuthProvider provider) implements OAuthClient {
 

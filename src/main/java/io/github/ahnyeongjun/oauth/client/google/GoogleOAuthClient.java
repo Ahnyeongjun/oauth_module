@@ -81,6 +81,10 @@ public class GoogleOAuthClient implements OAuthClient {
                         new IllegalStateException("Empty user-info response body"));
             }
             String providerId = (String) body.get("sub");
+            if (providerId == null) {
+                throw new OAuthAuthenticationException("Google",
+                        new IllegalStateException("Missing sub in user-info response"));
+            }
             String email = (String) body.get("email");
             String nickname = (String) body.get("name");
             String profileImage = (String) body.get("picture");
